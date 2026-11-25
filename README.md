@@ -32,9 +32,12 @@ Then open http://localhost:8000.
 
 **Option 2: host it free on GitHub Pages**
 
+The repo has a workflow (`.github/workflows/pages.yml`) that publishes the app every time the default branch changes. To switch it on (one time only):
+
 1. In the repo on GitHub, go to **Settings → Pages**.
-2. Under "Build and deployment", choose **Deploy from a branch**, then pick your branch and the `/ (root)` folder.
-3. After a minute your app is live at `https://<your-username>.github.io/joke-planner/`.
+2. Under "Build and deployment", set **Source** to **GitHub Actions**.
+3. Go to **Actions → Deploy to GitHub Pages → Run workflow** (or push any change).
+4. After a minute your app is live at `https://<your-username>.github.io/joke-planner/`.
 
 You can also double-click `index.html` to open it directly. Writing jokes and building sets will work, but the browser may block the microphone.
 
