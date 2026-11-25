@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Joke Planner</title>
+  <meta name="description" content="Write jokes, time them, and build sets to length.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">🎤</span> Joke Planner</div>
+    <div class="topbar-status">
+      <span id="saveStatus" class="save-status" role="status">Saved in this browser</span>
+      <span id="backupStatus" class="backup-status"></span>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" id="backupBtn" class="btn" title="Download all jokes and sets as a backup file">⬇ Backup</button>
+      <button type="button" id="restoreBtn" class="btn" title="Load a backup file">⬆ Restore</button>
+      <input type="file" id="restoreInput" accept="application/json,.json" hidden>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- Library -->
+    <section class="pane" id="libraryPane" aria-labelledby="libraryHeading">
+      <div class="pane-head">
+        <h2 id="libraryHeading">Jokes <span id="jokeCount" class="count"></span></h2>
+        <div class="pane-actions">
+          <button type="button" class="btn" id="newJokeBtn">＋ New joke</button>
+          <button type="button" class="btn btn-record" id="recordJokeBtn" title="Perform a joke out loud: it's timed and transcribed">● Record joke</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <input type="search" id="search" placeholder="Search jokes…" aria-label="Search jokes">
+        <select id="sort" aria-label="Sort jokes">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="title">Title A–Z</option>
+          <option value="short">Shortest</option>
+          <option value="long">Longest</option>
+        </select>
+      </div>
+      <div class="list-wrap">
+        <ul id="library" class="card-list" aria-label="Joke library"></ul>
+        <div id="libraryEmpty" class="empty" hidden></div>
+      </div>
+      <p class="drop-remove-hint">Drop here to remove from set</p>
+    </section>
+
+    <!-- Set -->
+    <section class="pane" id="setPane" aria-labelledby="setHeading">
+      <div class="pane-head">
+        <h2 id="setHeading" class="visually-hidden">Set</h2>
+        <select id="setSelect" class="set-select" aria-label="Choose set"></select>
+        <div class="pane-actions">
+          <button type="button" class="btn btn-icon" id="newSetBtn" title="New set" aria-label="New set">＋</button>
+          <details class="menu">
+            <summary class="btn btn-icon" title="Set options" aria-label="Set options">⋯</summary>
+            <div class="menu-pop" role="menu">
+              <button type="button" role="menuitem" data-set-action="rename">Rename set</button>
+              <button type="button" role="menuitem" data-set-action="duplicate">Duplicate set</button>
+              <button type="button" role="menuitem" data-set-action="clear">Remove all jokes from set</button>
+              <button type="button" role="menuitem" data-set-action="delete" class="danger">Delete set</button>
+            </div>
+          </details>
+          <details class="menu">
+            <summary class="btn">Export ▾</summary>
+            <div class="menu-pop" role="menu">
+              <button type="button" role="menuitem" data-export="txt">Set list (.txt)</button>
+              <button type="button" role="menuitem" data-export="txt-scripts">Set with scripts (.txt)</button>
+              <button type="button" role="menuitem" data-export="copy">Copy set list</button>
+              <button type="button" role="menuitem" data-export="print">Print set list</button>
+              <button type="button" role="menuitem" data-export="print-scripts">Print with scripts</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="set-summary">
+        <label class="target">
+          Target
+          <input type="number" id="targetMinutes" min="0.5" max="600" step="0.5" inputmode="decimal" aria-label="Target length in minutes">
+          min
+        </label>
+        <div class="totals">
+          <span id="setTotal" class="total">0:00</span>
+          <span id="setDiff" class="diff"></span>
+        </div>
+        <div class="progress" aria-hidden="true"><div id="setProgress" class="progress-fill"></div></div>
+        <p id="setMeta" class="set-meta"></p>
+      </div>
+
+      <div class="list-wrap">
+        <ol id="setList" class="card-list set-list" aria-label="Jokes in this set"></ol>
+        <div id="setEmpty" class="empty set-empty">
+          <strong>Drag jokes here</strong> to build your set,<br>or press <b>＋</b> on a joke.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Joke editor -->
+  <dialog id="jokeDialog" class="dialog">
+    <form id="jokeForm" novalidate>
+      <h2 id="jokeDialogTitle">New joke</h2>
+      <label class="field">
+        <span>Title</span>
+        <input name="title" maxlength="200" autocomplete="off" placeholder="e.g. Airport security">
+      </label>
+      <label class="field">
+        <span>Script</span>
+        <textarea name="script" rows="10" placeholder="The whole bit, word for word…"></textarea>
+      </label>
+      <div class="field-row">
+        <label class="field field-duration">
+          <span>Length</span>
+          <input name="duration" autocomplete="off" placeholder="m:ss" inputmode="numeric">
+        </label>
+        <button type="button" class="btn" id="timeFromEditor">⏱ Time it</button>
+        <p id="estimateHint" class="hint"></p>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-danger-ghost" id="deleteJokeBtn">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Recorder / timer -->
+  <dialog id="recDialog" class="dialog rec-dialog">
+    <h2 id="recHeading">Record a new joke</h2>
+
+    <div id="recScriptRef" class="script-ref"></div>
+
+    <div class="rec-stage">
+      <div id="recClock" class="clock" aria-live="off">0:00.0</div>
+      <div class="meter" aria-hidden="true">
+        <div id="recMeter" class="meter-fill"></div>
+        <div id="recThresh" class="meter-thresh"></div>
+      </div>
+      <p id="recStatus" class="rec-status" role="status"></p>
+      <p id="recNote" class="rec-note" hidden></p>
+    </div>
+
+    <details class="rec-options" id="recOptions">
+      <summary>Timing options</summary>
+      <fieldset id="recOptionsFields">
+        <label class="check"><input type="checkbox" id="optVoiceTrigger"> Start the clock when I start talking</label>
+        <label class="check"><input type="checkbox" id="optAutoStop"> Stop automatically after
+          <input type="number" id="optSilence" min="1" max="30" step="0.5" class="inline-num"> seconds of silence</label>
+        <label class="check" id="optTranscribeRow"><input type="checkbox" id="optTranscribe"> Transcribe my words into the script</label>
+        <label class="range">Mic sensitivity
+          <input type="range" id="optSensitivity" min="1" max="10" step="1">
+        </label>
+        <p class="hint" id="speechSupportHint"></p>
+      </fieldset>
+    </details>
+
+    <div id="recNewFields">
+      <label class="field">
+        <span>Title</span>
+        <input id="recTitle" maxlength="200" autocomplete="off" placeholder="Leave blank to use the first few words">
+      </label>
+      <label class="field">
+        <span>Script</span>
+        <textarea id="recScript" rows="5" placeholder="Your words show up here as you talk. You can also type or fix it afterwards."></textarea>
+      </label>
+      <label class="check" id="recAddRow"><input type="checkbox" id="recAddToSet"> Add to <span id="recSetName"></span></label>
+    </div>
+
+    <div id="recResult" class="field-row" hidden>
+      <label class="field field-duration">
+        <span>Length</span>
+        <input id="recDuration" autocomplete="off" placeholder="m:ss">
+      </label>
+      <p id="recResultNote" class="hint"></p>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="recCancel">Cancel</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="recRedo" hidden>↺ Redo</button>
+      <button type="button" class="btn btn-record btn-big" id="recStart">● Start</button>
+      <button type="button" class="btn btn-stop btn-big" id="recStop" hidden>■ Stop</button>
+      <button type="button" class="btn btn-primary" id="recSave" hidden>Save</button>
+    </div>
+  </dialog>
+
+  <!-- Generic prompt / confirm -->
+  <dialog id="askDialog" class="dialog ask-dialog">
+    <form id="askForm" novalidate>
+      <h2 id="askTitle"></h2>
+      <p id="askMessage" class="ask-message"></p>
+      <input id="askInput" class="ask-input" autocomplete="off" maxlength="200">
+      <div class="dialog-actions" id="askActions"></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="printArea" class="print-area" aria-hidden="true"></div>
+
+  <script src="voice.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
